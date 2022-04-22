@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Major assgn 4</title>
+
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+    <script src="https://code.jquery.com/ui/1.13.1/jquery-ui.js"></script>
+
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.13.1/themes/base/jquery-ui.css">
+    <style>
+    </style>
+</head>
+<body>
+
+<svg width="40vw" viewbox="0 0 512 600"></svg>
+
+<h3>Threshold range</h3>
+<div id="threshold-range" style="width:50%;">
+</div>
+<br>
+
+<h3>Adjust threshold</h3>
+<div id="threshold-adjust" style="width:50%;">
+    <div id="threshold"></div>
+</div>
+<br>
+<script>
+    let svg = d3.select("svg");
+    const ctData = `data/Data_CT.csv`;
+
+    let min_val = 0;
+    let max_val = 3000;
+    let threshold = 100;
+    let values_T = [];
+
+    function initRange() {
+
+        let threshold = $("#threshold-range");
+
+        threshold.slider({
+            range: true,
+            min: min_val,
+            max: max_val,
+            values: [min_val, max_val],
+
+            change: function (event, obj) {
+                if (obj.handleIndex === 0) {
+                    min_val = obj.value
+                } else {
+                    max_val = obj.value;
+                }
+                plot_contour();
+            }
+        });
+    }
+
+    function initThreshold() {
+
+        $("#threshold-adjust").slider({
+            min: min_val,
+            max: max_val,
+            value: threshold,
+            change: function (event, ui) {
+                threshold = ui.value;
+                plot_contour();
+            }
+        });
+    }
+
+    function plot_contour() {
+        let m = 512, n = 600;
+        const path = d3.geoPath();
+
+        let colors = d3.scaleLinear()
+            .domain(d3.range(min_val, max_val,
+                parseInt(Math.abs(max_val - min_val) / 6)))
+            .range(["#ffffff", "#8772ba", "#baa998", "#3edd03", "#ffffbf", "#fdae61", "#d7191c"])
+            .interpolate(d3.interpolateHcl);
+
+        let contours = d3.contours()
+            .size([m, n])
+            .thresholds(d3.range(min_val, max_val, threshold))
+            (values_T);
+
+        svg.append("g").attr("class", "contours")
+            .selectAll("path")
+            .data(contours)
+            .enter()
+            .append("path")
+            .attr("d", function (d) {
+                return path(d)
+            })
+            .attr("stroke", "black")
+            .attr("stroke-width", ".1px")
+            .attr("stroke-linejoin", "round")
+            .attr("fill",
+                function (d) {
+                    return colors(d.value)
+                })
+    }
+
+    function render(fileName) {
+        d3.csv(fileName).then(function (data) {
+
+            data.forEach(function (d) {
+                if (max_val < +d[0]) {
+                    max_val = +d[0];
+                }
+                if (+d[0] < min_val) {
+                    min_val = +d[0];
+                }
+                values_T.push(+d[0]);
+            });
+
+            initRange();
+            initThreshold();
+            plot_contour();
+        });
+    }
+    render(ctData);
+
+</script>
+</body>
+</html>
